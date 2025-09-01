@@ -42,17 +42,31 @@
     </table>
   </div>
 
+  
   <script>
-    // Demo data (later replaced by backend API)
-    const registrations = JSON.parse(localStorage.getItem('registrations')||'[]');
-    const table = document.getElementById('regTable');
-    const total = document.getElementById('totalRegs');
-    total.textContent = registrations.length;
-    registrations.forEach(r=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${r.fullName}</td><td>${r.email}</td><td>${r.phone}</td><td>${r.org}</td><td>${r.role}</td><td>${new Date(r.ts).toLocaleString()}</td>`;
-      table.appendChild(tr);
-    });
-  </script>
+  fetch("http://localhost:3000/registrations")
+    .then(res => res.json())
+    .then(registrations => {
+      const table = document.getElementById('regTable');
+      const total = document.getElementById('totalRegs');
+      total.textContent = registrations.length;
+
+      registrations.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.fullName}</td>
+          <td>${r.email}</td>
+          <td>${r.phone}</td>
+          <td>${r.org || ""}</td>
+          <td>${r.role || ""}</td>
+          <td>${new Date(r.ts).toLocaleString()}</td>
+        `;
+        table.appendChild(tr);
+      });
+    })
+    .catch(err => console.error("Error loading data:", err));
+</script>
+
+
 </body>
 </html>

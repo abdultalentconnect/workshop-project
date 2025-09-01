@@ -1,34 +1,19 @@
+// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const mysql = require('mysql2');
+const connection = require('./db'); // import db.js
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// MySQL connection
-const connection = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',           
-    password: 'password123',
-    database: 'event'
-});
-
-connection.connect(err => {
-    if (err) {
-        console.log("Database connection failed", err);
-        return;
-    }
-    console.log("Connected to MySQL database.");
-});
-
-// GET route to test server
+// Test route
 app.get('/', (req, res) => {
-    res.send('Hello from backend!');
+    res.send('Backend server is running!');
 });
 
-// POST route to handle registration
+// Registration route
 app.post('/register', (req, res) => {
     const { fullName, email, phone, org, role } = req.body;
 
@@ -41,14 +26,27 @@ app.post('/register', (req, res) => {
 
     connection.query(sql, values, (err, result) => {
         if (err) {
-            console.log(err);
+            console.error("Database error:", err);
             return res.status(500).json({ message: "Database error" });
         }
         res.status(201).json({ message: "Registration successful", id: result.insertId });
     });
 });
+// Get all registrations
+app.get('/registrations', (req, res) => {
+    const sql = "SELECT * FROM registration ORDER BY id DESC";
+    connection.query(sql, (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ message: "Database error" });
+        }
+        res.json(results);
+    });
+});
+
 
 // Start server
-app.listen(3000, () => {
-    console.log("Server running on http://localhost:3000");
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
 });
