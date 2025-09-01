@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Event Landing – Reusable Single Page</title>
+  <meta name="description" content="Reusable landing page for workshops, hackathons, and events." />
+  <style>
+    /* ======= THEME  */
+    :root{
+      --brand-50:#eef2ff; --brand-100:#e0e7ff; --brand-200:#c7d2fe; --brand-300:#a5b4fc; --brand-400:#818cf8; --brand-500:#6366f1; --brand-600:#4f46e5; --brand-700:#4338ca; --brand-800:#3730a3; --brand-900:#312e81;
+      --ink:#0f172a; --muted:#475569; --bg:#0b1020; --panel:#0f162c; --panel-2:#121b34; --ring:rgba(99,102,241,.5);
+      --radius:16px;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;color:#e5e7eb;background:var(--bg)}
+    img{max-width:100%;display:block}
+    a{color:inherit;text-decoration:none}
+    button,input,select,textarea{font:inherit}
+
+    .container{width:min(1100px,90vw);margin-inline:auto}
+    .grid{display:grid;gap:1rem}
+    .btn{display:inline-block;padding:.9rem 1.1rem;border-radius:999px;border:1px solid transparent;background:var(--brand-600);color:white;font-weight:600;transition:.2s ease;box-shadow:0 6px 20px rgba(99,102,241,.35)}
+    .btn:hover{transform:translateY(-1px);background:var(--brand-500)}
+    .btn.ghost{background:transparent;border-color:rgba(229,231,235,.15)}
+
+    .nav{position:sticky;top:0;z-index:40;background:linear-gradient(180deg,rgba(11,16,32,.9),rgba(11,16,32,.6));backdrop-filter:blur(8px);border-bottom:1px solid rgba(148,163,184,.1)}
+    .nav-wrap{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0}
+    .brand{display:flex;align-items:center;gap:.6rem;font-weight:800;letter-spacing:.4px}
+    .brand .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand-500),var(--brand-800));display:grid;place-items:center;font-weight:900}
+    .nav-links{display:flex;gap:1rem;align-items:center}
+    .nav-links a{padding:.5rem .8rem;border-radius:12px;color:#cbd5e1}
+    .nav-links a.active,.nav-links a:hover{background:rgba(99,102,241,.12);color:white}
+    .hamburger{display:none}
+
+    .hero{padding:5rem 0 3rem;}
+    .hero .content{display:grid;grid-template-columns:1.2fr 1fr;gap:2rem;align-items:center}
+    .eyebrow{display:inline-flex;gap:.5rem;align-items:center;padding:.35rem .6rem;border-radius:999px;background:rgba(99,102,241,.12);color:#c7d2fe;border:1px solid rgba(99,102,241,.25)}
+    h1{font-size:clamp(2rem,4vw,3rem);line-height:1.15;margin:.5rem 0 1rem}
+    .lead{color:#cbd5e1;font-size:1.05rem}
+    .meta{display:flex;flex-wrap:wrap;gap:.6rem;margin:1rem 0 1.2rem}
+    .meta .chip{padding:.45rem .7rem;border-radius:999px;background:transparent;border:none;color:#e2e8f0}
+    .cta{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;margin-top:.8rem}
+
+    section{padding:3.2rem 0}
+    section .title{font-size:clamp(1.5rem,2.4vw,2rem);margin:0 0 .5rem}
+    section .muted{color:#9ca3af}
+    .card{background:var(--panel);border:1px solid rgba(148,163,184,.12);border-radius:var(--radius);padding:1rem}
+    .features{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+    .feature{padding:1rem;border-radius:var(--radius);background:linear-gradient(180deg,rgba(17,24,39,.3),rgba(17,24,39,.15));border:1px solid rgba(148,163,184,.12)}
+    .feature h3{margin:.4rem 0 .3rem;font-size:1.05rem}
+    .feature p{color:#9ca3af;margin:0}
+    form{display:grid;gap:1rem}
+    .field{display:grid;gap:.35rem}
+    label{font-weight:600;color:#e2e8f0}
+    input,select,textarea{padding:.8rem;border-radius:12px;background:var(--panel-2);border:1px solid rgba(148,163,184,.16);color:#e5e7eb;outline:0}
+    input:focus,select:focus,textarea:focus{border-color:var(--ring);box-shadow:0 0 0 4px rgba(99,102,241,.12)}
+    .twocol{display:grid;gap:1rem;grid-template-columns:1fr 1fr}
+    .helper{color:#9ca3af;font-size:.9rem}
+    footer{padding:2rem 0;border-top:1px solid rgba(148,163,184,.12);color:#94a3b8}
+
+    @media (max-width: 900px){
+      .hero .content{grid-template-columns:1fr}
+      .twocol{grid-template-columns:1fr}
+      .nav-links{display:none}
+      .hamburger{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .6rem;border-radius:10px;border:1px solid rgba(148,163,184,.18)}
+      .nav.open .nav-links{position:absolute;left:0;right:0;top:58px;display:flex;flex-direction:column;background:rgba(15,22,44,.96);border-bottom:1px solid rgba(148,163,184,.12);padding:1rem}
+    }
+  </style>
+</head>
+<body>
+  <!-- NAV -->
+  <nav class="nav" id="top">
+    <div class="container nav-wrap">
+      <a href="#top" class="brand">
+        <span class="logo">AI</span>
+        <span id="brandName">Event</span>
+      </a>
+      <button class="hamburger" id="menuBtn" aria-label="Menu">☰ Menu</button>
+      <div class="nav-links" id="navLinks">
+        <a href="#about">About</a>
+        <a href="#learn">What you'll learn</a>
+        <a href="#register">Register</a>
+        <a href="#contact">Contact</a>
+        <a class="btn ghost" href="admin.html">Admin Panel</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="container content">
+      <div>
+        <span class="eyebrow">Upcoming • <span id="eventType">Workshop</span></span>
+        <h1 id="title">AI Workshop 2025</h1>
+        <p class="lead" id="tagline">Kickstart your AI journey with hands‑on projects and practical skills.</p>
+        <div class="meta">
+          <span class="chip" id="dateChip">Sat, Sep 13</span>
+          <span class="chip" id="timeChip">10:00 AM – 4:00 PM</span>
+        </div>
+        <div class="cta">
+          <a class="btn" href="#register">Register now</a>
+          <a class="btn ghost" href="#learn">View curriculum</a>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3 style="margin:.2rem 0 .6rem">Who is this for?</h3>
+          <ul style="margin:0;padding-left:1.1rem;color:#cbd5e1">
+            <li>Students & early‑career developers</li>
+            <li>Product / project enthusiasts</li>
+            <li>Anyone curious about AI tools</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="container">
+      <h2 class="title">About the event</h2>
+      <p class="muted" id="aboutText">Join our comprehensive AI training session and unlock the power of machine learning, neural networks, and cutting-edge AI technologies. 
+        Transform your career with hands-on experience and expert guidance.</p>
+    </div>
+  </section>
+
+  <!-- LEARN -->
+  <section id="learn">
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:1rem;flex-wrap:wrap">
+        <div>
+          <h2 class="title">What you'll learn</h2>
+          <p class="muted">Key takeaways you can customize per event.</p>
+        </div>
+        <a class="btn ghost" href="#register">Save my seat</a>
+      </div>
+      <div class="grid features" id="featuresGrid"></div>
+    </div>
+  </section>
+
+  <!-- REGISTER -->
+  <section id="register">
+    <div class="container grid" style="grid-template-columns:1.2fr .8fr;align-items:start">
+      <div>
+        <h2 class="title">Register</h2>
+        <p class="muted">Fill the form to reserve your spot. You'll receive a confirmation email.</p>
+        <form id="regForm" novalidate>
+          <div class="twocol">
+            <div class="field">
+              <label for="fullName">Full name</label>
+              <input id="fullName" name="fullName" type="text" placeholder="your name" required />
+            </div>
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" placeholder="@example.com" required />
+            </div>
+          </div>
+          <div class="twocol">
+            <div class="field">
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel" placeholder="98XXXXXXXX" required />
+            </div>
+            <div class="field">
+              <label for="org">Organization / College</label>
+              <input id="org" name="org" type="text" placeholder="ABC College" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="role">Role</label>
+            <select id="role" name="role">
+              <option>Student</option>
+              <option>Intern</option>
+              <option>Developer</option>
+            </select>
+          </div>
+          <label style="display:flex;gap:.6rem;align-items:flex-start">
+            <input type="checkbox" id="agree" required />
+            <span class="helper">I agree to the terms and confirm my details are correct.</span>
+          </label>
+          <button class="btn" type="submit">Submit registration</button>
+          <p class="helper" style="margin:0">This demo saves locally. Later you'll connect it to your Express API.</p>
+          <div id="formMsg" class="helper" aria-live="polite" style="margin-top:.5rem"></div>
+        </form>
+      </div>
+      <aside class="card">
+        <h3 style="margin:.2rem 0 .6rem">Event details</h3>
+        <ul style="margin:0;padding-left:1.1rem;color:#cbd5e1">
+          <li><strong>Date:</strong> <span id="dateDetail">TBD</span></li>
+          <li><strong>Time:</strong> <span id="timeDetail">TBD</span></li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer id="contact">
+    <div class="container" style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center">
+      <p style="margin:0">© <span id="year"></span> <span id="orgName">Your Team / Club</span>. All rights reserved.</p>
+      <p style="margin:0">Questions? <a href="mailto:hello@example.com">hello@example.com</a></p>
+    </div>
+  </footer>
+
+  <script>
+const nav = document.querySelector('.nav');
+document.getElementById('menuBtn').addEventListener('click',()=>{ nav.classList.toggle('open'); });
+document.querySelectorAll('#navLinks a').forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')));
+
+const EVENT_DATA = {
+  type: 'Workshop',
+  title: 'AI Workshop 2025',
+  tagline: 'Kickstart your AI journey with hands‑on projects and practical skills.',
+  dateLabel: 'Sat, Sep 13',
+  timeLabel: '10:00 AM – 4:00 PM',
+  about: 'Learn practical AI and ML fundamentals, prompts, and toolchains. Build a small project by the end of the day.',
+  orgName: 'Your Team / Club',
+  features: [
+    { title: 'Prompting & LLM basics', desc: 'Understand tokens, context, and designing effective prompts.' },
+    { title: 'Data to insight', desc: 'From CSVs to quick dashboards using Python/JS tools.' },
+    { title: 'Build a mini app', desc: 'Glue APIs to create something you can demo.' },
+    { title: 'Ethics & safety', desc: 'Responsible use, data privacy, and safe deployment.' },
+    { title: 'Product thinking', desc: 'Frame problems, define scope, and measure impact.' },
+    { title: 'Career tips', desc: 'What to learn next and how to showcase your work.' }
+  ]
+};
+
+function render(data){
+  const $ = (sel)=>document.querySelector(sel);
+  $('#eventType').textContent = data.type;
+  $('#title').textContent = data.title;
+  $('#tagline').textContent = data.tagline;
+  $('#dateChip').textContent = data.dateLabel;
+  $('#timeChip').textContent = data.timeLabel;
+  $('#aboutText').textContent = data.about;
+  $('#dateDetail').textContent = data.dateLabel;
+  $('#timeDetail').textContent = data.timeLabel;
+  $('#year').textContent = new Date().getFullYear();
+  $('#orgName').textContent = data.orgName;
+  $('#brandName').textContent = data.title.split(' ')[0] || 'Event';
+
+  const grid = document.getElementById('featuresGrid');
+  grid.innerHTML = '';
+  data.features.forEach(f=>{
+    const card = document.createElement('article');
+    card.className = 'feature';
+    card.innerHTML = `<h3>${f.title}</h3><p>${f.desc}</p>`;
+    grid.appendChild(card);
+  });
+}
+render(EVENT_DATA);
+
+// ✅ Define form and msg BEFORE using them
+const form = document.getElementById('regForm');
+const msg = document.getElementById('formMsg');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault(); // prevent page reload
+
+  console.log("Form submitted!");
+
+  if (!form.reportValidity()) return;
+
+  const payload = Object.fromEntries(new FormData(form).entries());
+  console.log("Payload to send:", payload);
+
+  try {
+    const res = await fetch('http://localhost:3000/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    console.log("Response data:", data);
+
+    if (res.ok) {
+      msg.textContent = `✅ Registered! ID: ${data.id}`;
+      form.reset();
+      document.getElementById('agree').checked = false;
+    } else {
+      msg.textContent = `❌ ${data.message}`;
+    }
+
+  } catch (err) {
+    console.error("Fetch error:", err);
+    msg.textContent = "❌ Something went wrong. Try again.";
+  }
+
+  setTimeout(() => { msg.textContent = ''; }, 3000);
+});
+</script>
+
+</body>
+</html>
