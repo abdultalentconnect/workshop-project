@@ -53,12 +53,20 @@ app.get('/event', (req, res) => {
 app.put('/event', (req, res) => {
     const { title, date, time, about, features } = req.body;
     const featuresStr = Array.isArray(features) ? features.join(',') : features || '';
-    const sql = "UPDATE event_details SET title=?, date=?, time=?, about=?, features=? WHERE id=1";
+
+    // Update the latest event (highest id)
+    const sql = `
+        UPDATE event_details
+        SET title=?, date=?, time=?, about=?, features=?
+        ORDER BY id DESC
+        LIMIT 1
+    `;
     connection.query(sql, [title, date, time, about, featuresStr], (err) => {
         if (err) return res.status(500).json({ success: false, message: "Database error" });
-        res.json({ success: true, message: "Event updated successfully" });
+        res.json({ success: true, message: "Latest event updated successfully" });
     });
 });
+
 
 // ----------------- GET REGISTRATIONS -----------------
 app.get('/registrations', (req, res) => {
