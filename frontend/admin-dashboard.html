@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard</title>
+<style>
+:root {
+  --brand-500:#6366f1;
+  --brand-600:#4f46e5;
+  --bg:#0b1020;
+  --panel:#0f162c;
+  --panel-2:#121b34;
+  --text-light:#e5e7eb;
+  --radius:12px;
+  --shadow:0 8px 25px rgba(0,0,0,0.3);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif;}
+
+body{background:var(--bg);color:var(--text-light);}
+
+header{
+  background: var(--brand-500);
+  padding:1rem;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color:white;
+  flex-wrap:wrap;
+}
+
+header h1{margin:0;font-size:1.5rem;}
+
+header button{
+  background:#fff;
+  color:var(--brand-500);
+  border:none;
+  padding:.6rem 1rem;
+  border-radius:var(--radius);
+  cursor:pointer;
+  font-weight:600;
+  transition:all .3s;
+}
+header button:hover{background:#e0e7ff;}
+
+main{
+  padding:1rem;
+  max-width:1000px;
+  margin:2rem auto;
+  display:grid;
+  gap:2rem;
+}
+
+.container{
+  background:var(--panel);
+  padding:1.5rem;
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+
+.container h2{
+  margin-bottom:1rem;
+  color:var(--brand-500);
+}
+
+input, textarea{
+  width:100%;
+  padding:.8rem;
+  margin:.4rem 0;
+  border-radius:var(--radius);
+  border:1px solid rgba(255,255,255,.2);
+  background:var(--panel-2);
+  color:var(--text-light);
+  transition:border .3s, box-shadow .3s;
+}
+input:focus, textarea:focus{
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 4px rgba(99,102,241,.15);
+}
+
+button{
+  background: var(--brand-500);
+  color: white;
+  border: none;
+  padding: .7rem 1rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  margin-top:.8rem;
+  transition: all .3s;
+}
+button:hover{
+  background: var(--brand-600);
+  transform: translateY(-2px);
+  box-shadow:0 6px 15px rgba(99,102,241,.35);
+}
+
+#featuresContainer input{margin-bottom:.5rem;}
+
+table{
+  width:100%;
+  border-collapse: collapse;
+  margin-top:1rem;
+  background: var(--panel-2);
+  border-radius: var(--radius);
+  overflow:hidden;
+}
+th, td{
+  padding:.7rem;
+  text-align:left;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+th{
+  background: var(--panel);
+  color: var(--brand-500);
+}
+tr:hover{
+  background: rgba(99,102,241,.1);
+}
+
+.msg{
+  margin-top:10px;
+  font-weight:600;
+  transition:all .3s;
+}
+.msg.success{color:#22c55e;}
+.msg.error{color:#f87171;}
+
+@media(max-width:700px){
+  main{margin:1rem;}
+  header{flex-direction:column; gap:.5rem;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Admin Dashboard</h1>
+  <button id="logoutBtn">Logout</button>
+</header>
+
+<main>
+
+  <div class="container">
+    <h2>Edit Event Details</h2>
+
+    <label>Title</label>
+    <input id="title" type="text">
+
+    <label>Date</label>
+    <input id="date" type="text">
+
+    <label>Time</label>
+    <input id="time" type="text">
+
+    <label>About / Description</label>
+    <textarea id="about" rows="4"></textarea>
+
+    <label>What You Will Learn</label>
+    <div id="featuresContainer"></div>
+    <button id="addFeatureBtn" type="button">+ Add Feature</button>
+
+    <button id="saveBtn">Save Changes</button>
+    <p id="msg" class="msg"></p>
+  </div>
+
+  <div class="container">
+    <h2>Registrations</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Org</th><th>Role</th></tr>
+      </thead>
+      <tbody id="regTable"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<script>
+// Logout
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('adminLoggedIn');
+  window.location.href = 'admin-login.html';
+});
+
+// Ensure admin is logged in
+if (sessionStorage.getItem('adminLoggedIn') !== 'true') {
+  window.location.href = 'admin-login.html';
+}
+
+// Load event details
+async function loadEvent() {
+  try {
+    const res = await fetch('http://localhost:3000/event');
+    const data = await res.json();
+
+    document.getElementById('title').value = data.title || '';
+    document.getElementById('date').value = data.date || '';
+    document.getElementById('time').value = data.time || '';
+    document.getElementById('about').value = data.about || '';
+
+    const featuresContainer = document.getElementById('featuresContainer');
+    featuresContainer.innerHTML = '';
+    const features = Array.isArray(data.features) ? data.features : [];
+    if (features.length === 0) features.push('');
+    features.forEach((f,i)=>{
+      const input = document.createElement('input');
+      input.type='text';
+      input.className='feature-input';
+      input.value=f;
+      input.placeholder=`Feature ${i+1}`;
+      featuresContainer.appendChild(input);
+    });
+  } catch(err){console.error('Failed to load event:',err);}
+}
+
+// Add new feature input
+document.getElementById('addFeatureBtn').addEventListener('click',()=>{
+  const input=document.createElement('input');
+  input.type='text';
+  input.className='feature-input';
+  input.placeholder=`Feature ${document.getElementById('featuresContainer').children.length +1}`;
+  document.getElementById('featuresContainer').appendChild(input);
+});
+
+// Save changes
+document.getElementById('saveBtn').addEventListener('click', async()=>{
+  const title=document.getElementById('title').value;
+  const date=document.getElementById('date').value;
+  const time=document.getElementById('time').value;
+  const about=document.getElementById('about').value;
+  const features=Array.from(document.querySelectorAll('.feature-input')).map(f=>f.value.trim()).filter(f=>f);
+
+  try{
+    const res=await fetch('http://localhost:3000/event',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({title,date,time,about,features})
+    });
+    const result=await res.json();
+    const msg=document.getElementById('msg');
+    if(result.success){
+      msg.textContent="✅ Event updated successfully!";
+      msg.className='msg success';
+    } else {
+      msg.textContent="❌ Failed to update event";
+      msg.className='msg error';
+    }
+  }catch(err){
+    console.error(err);
+    const msg=document.getElementById('msg');
+    msg.textContent="❌ Error updating event";
+    msg.className='msg error';
+  }
+});
+
+// Load registrations
+async function loadRegistrations(){
+  try{
+    const res=await fetch('http://localhost:3000/registrations');
+    const data=await res.json();
+    const tbody=document.getElementById('regTable');
+    tbody.innerHTML='';
+    data.forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${r.id}</td><td>${r.fullName}</td><td>${r.email}</td><td>${r.phone}</td><td>${r.org}</td><td>${r.role}</td>`;
+      tbody.appendChild(tr);
+    });
+  }catch(err){
+    console.error("Failed to load registrations:",err);
+  }
+}
+
+loadEvent();
+loadRegistrations();
+</script>
+
+</body>
+</html>

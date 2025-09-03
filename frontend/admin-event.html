@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Event</title>
+<style>
+body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding:20px; }
+.container { max-width:600px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+input, textarea { width:100%; padding:8px; margin:5px 0 10px; border-radius:4px; border:1px solid #ccc; }
+label { font-weight:bold; margin-top:10px; display:block; }
+button { padding:10px 15px; margin-top:10px; cursor:pointer; border:none; border-radius:4px; background:#4f46e5; color:white; }
+#featuresContainer input { margin-bottom:5px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Update Event Details</h2>
+
+  <label for="title">Title</label>
+  <input id="title" type="text">
+
+  <label for="date">Date</label>
+  <input id="date" type="text">
+
+  <label for="time">Time</label>
+  <input id="time" type="text">
+
+  <label for="about">About / Description</label>
+  <textarea id="about" rows="4" placeholder="Write about the event"></textarea>
+
+  <label>What You Will Learn (Separate points)</label>
+  <div id="featuresContainer">
+    <!-- Feature inputs will be loaded here -->
+  </div>
+
+  <button id="backBtn" style="margin-bottom: 20px;">⬅ Back</button>
+  <button id="addFeatureBtn" type="button">Add More Points</button>
+  <button id="saveBtn">Save Changes</button>
+  <p id="msg" style="margin-top:10px; color:green;"></p>
+</div>
+
+<script>
+// Load event details from backend
+async function loadEvent() {
+    try {
+        const res = await fetch('http://localhost:3000/event');
+        const data = await res.json();
+
+        document.getElementById('title').value = data.title || '';
+        document.getElementById('date').value = data.date || '';
+        document.getElementById('time').value = data.time || '';
+        document.getElementById('about').value = data.about || '';
+
+        const featuresContainer = document.getElementById('featuresContainer');
+        featuresContainer.innerHTML = '';
+        const points = data.features && data.features.length ? data.features : ['', '', '', '', ''];
+        points.forEach((f, index) => {
+            const input = document.createElement('input');
+            input.value = f;
+            input.placeholder = `Point ${index + 1}`;
+            input.classList.add('feature-input'); // ✅ Add class so it is sent
+            featuresContainer.appendChild(input);
+        });
+    } catch (err) {
+        console.error("Failed to load event:", err);
+    }
+}
+
+// Back button
+document.getElementById('backBtn').addEventListener('click', () => {
+    window.location.href = 'admin-dashboard.html';
+});
+
+// Add new point
+document.getElementById('addFeatureBtn').addEventListener('click', () => {
+    const featuresContainer = document.getElementById('featuresContainer');
+    const input = document.createElement('input');
+    input.placeholder = `Point ${featuresContainer.children.length + 1}`;
+    input.classList.add('feature-input'); // ✅ Add class
+    featuresContainer.appendChild(input);
+});
+
+// Save changes
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const title = document.getElementById('title').value;
+  const date = document.getElementById('date').value;
+  const time = document.getElementById('time').value;
+  const about = document.getElementById('about').value;
+
+  const features = Array.from(document.querySelectorAll('.feature-input'))
+                        .map(f => f.value.trim())
+                        .filter(f => f);
+
+  try {
+    const res = await fetch('http://localhost:3000/event', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, date, time, about, features })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('msg').textContent = "✅ Event updated successfully!";
+      // Reload landing page automatically if needed:
+      // window.location.href = '/'; // optional
+    } else {
+      document.getElementById('msg').textContent = "❌ Failed to update event";
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById('msg').textContent = "❌ Error updating event";
+  }
+});
+
+// Load event on page load
+loadEvent();
+</script>
+
+</body>
+</html>
