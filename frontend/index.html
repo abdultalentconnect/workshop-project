@@ -142,7 +142,12 @@ footer a:hover{color:var(--brand-500);}
     <input name="phone" placeholder="Phone" required>
     <input name="org" placeholder="Organization / School">
     <input name="role" placeholder="Role / Position">
-    <button type="submit">Register</button>
+
+    <!-- Amount (read-only, admin-set, placeholder if not set) -->
+    <input name="amount" id="amount" placeholder="Amount" readonly>
+
+    <!-- Changed button -->
+    <button type="button" id="payNowBtn">Pay Now</button>
     <p id="formMsg"></p>
   </form>
 </section>
@@ -177,6 +182,7 @@ async function loadEvent() {
     document.getElementById('dateChip').textContent = data.date || 'TBA';
     document.getElementById('timeChip').textContent = data.time || 'TBA';
     document.getElementById('aboutText').textContent = data.about || 'Details coming soon...';
+    
 
     const grid = document.getElementById('featuresGrid');
     grid.innerHTML = '';
@@ -190,15 +196,25 @@ async function loadEvent() {
     } else {
       grid.innerHTML = '<p style="color:#9ca3af">Details coming soon...</p>';
     }
+
+    // Load price dynamically if available
+    if (data.price) {
+      document.getElementById('amount').value = data.price;
+    } else {
+      document.getElementById('amount').value = "";
+      document.getElementById('amount').placeholder = "Amount";
+    }
   } catch (err) { console.error(err); }
 }
 loadEvent();
 
-// Handle registration
-document.getElementById('regForm').addEventListener('submit', async e => {
+// Handle Pay Now (instead of register)
+document.getElementById('payNowBtn').addEventListener('click', async e => {
   e.preventDefault();
-  const payload = Object.fromEntries(new FormData(e.target).entries());
+  const form = document.getElementById('regForm');
+  const payload = Object.fromEntries(new FormData(form).entries());
   const msg = document.getElementById('formMsg');
+
   try {
     const res = await fetch('http://localhost:3000/register', {
       method: 'POST',
@@ -207,9 +223,10 @@ document.getElementById('regForm').addEventListener('submit', async e => {
     });
     const data = await res.json();
     if (res.ok) {
-      msg.textContent = `✅ Registered! ID: ${data.id}`;
+      msg.textContent = `✅ Registered! Redirecting to payment...`;
       msg.className = 'success';
-      e.target.reset();
+      // Redirect to payment page with user ID
+      window.location.href = `payment.html?userId=${data.id}`;
     } else {
       msg.textContent = `❌ ${data.message || 'Failed to register'}`;
       msg.className = 'error';
@@ -221,5 +238,4 @@ document.getElementById('regForm').addEventListener('submit', async e => {
   }
 });
 </script>
-</body>
-</html>
+

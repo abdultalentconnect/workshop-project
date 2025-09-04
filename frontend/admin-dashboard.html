@@ -160,6 +160,10 @@ tr:hover{
     <div id="featuresContainer"></div>
     <button id="addFeatureBtn" type="button">+ Add Feature</button>
 
+    <label>Amount</label>
+<input id="price" type="number" placeholder="Set registration price">
+
+
     <button id="saveBtn">Save Changes</button>
     <p id="msg" class="msg"></p>
   </div>
@@ -168,7 +172,16 @@ tr:hover{
     <h2>Registrations</h2>
     <table>
       <thead>
-        <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Org</th><th>Role</th></tr>
+<tr>
+  <th>ID</th>
+  <th>Name</th>
+  <th>Email</th>
+  <th>Phone</th>
+  <th>Org</th>
+  <th>Role</th>
+  <th>Amount</th>
+  <th>Status</th>
+</tr>
       </thead>
       <tbody id="regTable"></tbody>
     </table>
@@ -198,6 +211,9 @@ async function loadEvent() {
     document.getElementById('date').value = data.date || '';
     document.getElementById('time').value = data.time || '';
     document.getElementById('about').value = data.about || '';
+    document.getElementById('price').value = data.price || '';
+
+
 
     const featuresContainer = document.getElementById('featuresContainer');
     featuresContainer.innerHTML = '';
@@ -230,12 +246,14 @@ document.getElementById('saveBtn').addEventListener('click', async()=>{
   const time=document.getElementById('time').value;
   const about=document.getElementById('about').value;
   const features=Array.from(document.querySelectorAll('.feature-input')).map(f=>f.value.trim()).filter(f=>f);
+  const price = Number(document.getElementById('price').value); 
+
 
   try{
     const res=await fetch('http://localhost:3000/event',{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({title,date,time,about,features})
+      body: JSON.stringify({title,date,time,about,features,price})
     });
     const result=await res.json();
     const msg=document.getElementById('msg');
@@ -263,7 +281,16 @@ async function loadRegistrations(){
     tbody.innerHTML='';
     data.forEach(r=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${r.id}</td><td>${r.fullName}</td><td>${r.email}</td><td>${r.phone}</td><td>${r.org}</td><td>${r.role}</td>`;
+tr.innerHTML = `
+  <td>${r.id}</td>
+  <td>${r.fullName}</td>
+  <td>${r.email}</td>
+  <td>${r.phone}</td>
+  <td>${r.org}</td>
+  <td>${r.role}</td>
+  <td>${r.amount || '-'}</td>
+  <td>${r.status || 'Unpaid'}</td>
+`;
       tbody.appendChild(tr);
     });
   }catch(err){

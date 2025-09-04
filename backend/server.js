@@ -36,7 +36,10 @@ app.get('/event', (req, res) => {
                 event.features = [];
             }
 
+            
+            event.price = event.price || 0;
             res.json(event);
+
         } else {
             res.json({
                 title: "",
@@ -51,17 +54,19 @@ app.get('/event', (req, res) => {
 
 // ----------------- UPDATE EVENT -----------------
 app.put('/event', (req, res) => {
-    const { title, date, time, about, features } = req.body;
+    const { title, date, time, about, features,price } = req.body;
     const featuresStr = Array.isArray(features) ? features.join(',') : features || '';
 
     // Update the latest event (highest id)
     const sql = `
-        UPDATE event_details
-        SET title=?, date=?, time=?, about=?, features=?
-        ORDER BY id DESC
-        LIMIT 1
-    `;
-    connection.query(sql, [title, date, time, about, featuresStr], (err) => {
+    UPDATE event_details
+    SET title=?, date=?, time=?, about=?, features=?, price=?
+    WHERE id = (
+        SELECT id FROM (SELECT id FROM event_details ORDER BY id DESC LIMIT 1) AS t
+    )
+`;
+
+    connection.query(sql, [title, date, time, about, featuresStr,price], (err) => {
         if (err) return res.status(500).json({ success: false, message: "Database error" });
         res.json({ success: true, message: "Latest event updated successfully" });
     });
