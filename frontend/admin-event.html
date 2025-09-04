@@ -103,8 +103,6 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 
     if (data.success) {
       document.getElementById('msg').textContent = "✅ Event updated successfully!";
-      // Reload landing page automatically if needed:
-      // window.location.href = '/'; // optional
     } else {
       document.getElementById('msg').textContent = "❌ Failed to update event";
     }
