@@ -9,8 +9,7 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "../frontend"))); 
 
-// ADMIN LOGIN
-
+// ----------------- ADMIN LOGIN -----------------
 app.post('/admin/login', (req, res) => {
     const { email, password } = req.body;
     const sql = "SELECT * FROM admin WHERE email = ? AND password = ?";
@@ -21,8 +20,7 @@ app.post('/admin/login', (req, res) => {
     });
 });
 
-// LATEST EVENT
-
+// ----------------- GET LATEST EVENT -----------------
 app.get('/event', (req, res) => {
     const sql = "SELECT * FROM event_details ORDER BY id DESC LIMIT 1";
     connection.query(sql, (err, results) => {
@@ -38,6 +36,7 @@ app.get('/event', (req, res) => {
                 event.features = [];
             }
 
+            event.price = event.price || 0; // added price field
             res.json(event);
         } else {
             res.json({
@@ -45,33 +44,33 @@ app.get('/event', (req, res) => {
                 date: "",
                 time: "",
                 about: "",
-                features: []
+                features: [],
+                price: 0
             });
         }
     });
 });
 
-// update event
-
+// ----------------- UPDATE EVENT -----------------
 app.put('/event', (req, res) => {
-    const { title, date, time, about, features } = req.body;
+    const { title, date, time, about, features, price } = req.body;
     const featuresStr = Array.isArray(features) ? features.join(',') : features || '';
 
     const sql = `
         UPDATE event_details
-        SET title=?, date=?, time=?, about=?, features=?
-        ORDER BY id DESC
-        LIMIT 1
+        SET title=?, date=?, time=?, about=?, features=?, price=?
+        WHERE id = (
+            SELECT id FROM (SELECT id FROM event_details ORDER BY id DESC LIMIT 1) AS t
+        )
     `;
-    connection.query(sql, [title, date, time, about, featuresStr], (err) => {
+
+    connection.query(sql, [title, date, time, about, featuresStr, price], (err) => {
         if (err) return res.status(500).json({ success: false, message: "Database error" });
         res.json({ success: true, message: "Latest event updated successfully" });
     });
 });
 
-
-// registration
-
+// ----------------- GET REGISTRATIONS -----------------
 app.get('/registrations', (req, res) => {
     const sql = "SELECT * FROM registration ORDER BY id DESC";
     connection.query(sql, (err, results) => {
@@ -80,8 +79,7 @@ app.get('/registrations', (req, res) => {
     });
 });
 
-// register participant
-
+// ----------------- REGISTER PARTICIPANT -----------------
 app.post('/register', (req, res) => {
     const { fullName, email, phone, org, role } = req.body;
     const sql = "INSERT INTO registration (fullName, email, phone, org, role) VALUES (?, ?, ?, ?, ?)";
@@ -91,6 +89,6 @@ app.post('/register', (req, res) => {
     });
 });
 
-// start server
+// ----------------- START SERVER -----------------
 const PORT = 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
