@@ -17,7 +17,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "../frontend"))); 
+app.use(express.static(path.join(__dirname, "../frontend")));
 
 // ----------------- ADMIN LOGIN -----------------
 app.post('/admin/login', (req, res) => {
@@ -69,19 +69,12 @@ app.put('/event', (req, res) => {
     const sql = `
         UPDATE event_details
         SET title=?, date=?, time=?, about=?, features=?, price=?
-<<<<<<< HEAD
-        ORDER BY id DESC
-        LIMIT 1
-    `;
-    connection.query(sql, [title, date, time, about, featuresStr, price || null], (err) => {
-=======
         WHERE id = (
             SELECT id FROM (SELECT id FROM event_details ORDER BY id DESC LIMIT 1) AS t
         )
     `;
 
     connection.query(sql, [title, date, time, about, featuresStr, price], (err) => {
->>>>>>> b5982f1660876d3acedfe9bd48b27c5d1976f07f
         if (err) return res.status(500).json({ success: false, message: "Database error" });
         res.json({ success: true, message: "Latest event updated successfully" });
     });
@@ -106,7 +99,6 @@ app.post('/register', (req, res) => {
     });
 });
 
-<<<<<<< HEAD
 // Razorpay setup (load credentials from DB when needed)
 const query = util.promisify(connection.query).bind(connection);
 
@@ -194,8 +186,3 @@ app.listen(PORT, HOST, () => {
     console.log(`Environment: ${NODE_ENV}`);
     console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
 });
-=======
-// ----------------- START SERVER -----------------
-const PORT = 3000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
->>>>>>> b5982f1660876d3acedfe9bd48b27c5d1976f07f
