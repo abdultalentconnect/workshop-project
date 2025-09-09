@@ -1,5 +1,4 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
@@ -16,7 +15,7 @@ const corsOptions = {
     credentials: true
 };
 app.use(cors(corsOptions));
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(express.static(path.join(__dirname, "../frontend")));
 
 // ----------------- ADMIN LOGIN -----------------
@@ -181,8 +180,11 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
     console.log(`Environment: ${NODE_ENV}`);
     console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
 });
+
+// Increase max listeners to prevent warnings
+server.setMaxListeners(0);
