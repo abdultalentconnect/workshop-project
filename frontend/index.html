@@ -165,6 +165,8 @@ footer a:hover{color:var(--brand-500);}
   </p>
 </footer>
 
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="config.js"></script>
 <script>
 
 // Scroll nav shadow
@@ -180,7 +182,7 @@ document.getElementById('menuBtn').addEventListener('click',()=> {
 // Load event dynamically
 async function loadEvent() {
   try {
-    const res = await fetch('http://localhost:3000/event');
+    const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`);
     const data = await res.json();
     document.getElementById('title').textContent = data.title || 'Event Title';
     document.getElementById('eventType').textContent = data.title || 'Event';
@@ -222,21 +224,79 @@ document.getElementById('payNowBtn').addEventListener('click', async e => {
   const msg = document.getElementById('formMsg');
 
   try {
-    const res = await fetch('http://localhost:3000/register', {
+    // 1) Register participant
+    const regRes = await fetch(`${window.APP_CONFIG.API_BASE_URL}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (res.ok) {
-      msg.textContent = `✅ Registered! Redirecting to payment...`;
-      msg.className = 'success';
-      // Redirect to payment page with user ID
-      window.location.href = `payment.html?userId=${data.id}`;
-    } else {
-      msg.textContent = `❌ ${data.message || 'Failed to register'}`;
+    const regData = await regRes.json();
+    if (!regRes.ok) {
+      msg.textContent = `❌ ${regData.message || 'Failed to register'}`;
       msg.className = 'error';
+      return;
     }
+
+    // 2) Create Razorpay order
+    const amount = document.getElementById('amount').value;
+    if (!amount) {
+      msg.textContent = '❌ Amount is missing';
+      msg.className = 'error';
+      return;
+    }
+
+    const orderRes = await fetch(`${window.APP_CONFIG.API_BASE_URL}/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount })
+    });
+    const orderData = await orderRes.json();
+    if (!orderRes.ok) {
+      msg.textContent = `❌ ${orderData.message || 'Failed to create order'}`;
+      msg.className = 'error';
+      return;
+    }
+
+    // 3) Open Razorpay checkout
+    const options = {
+      key: window.APP_CONFIG.RAZORPAY_KEY,
+      amount: orderData.amount,
+      currency: 'INR',
+      name: document.getElementById('brandName').textContent || 'Event',
+      description: document.getElementById('tagline').textContent || 'Registration fee',
+      order_id: orderData.id,
+      prefill: {
+        name: payload.fullName,
+        email: payload.email,
+        contact: payload.phone
+      },
+      theme: { color: '#6366f1' },
+      handler: async function (response) {
+        try {
+          const verifyRes = await fetch(`${window.APP_CONFIG.API_BASE_URL}/verify-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...response, registrationId: regData.id })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyRes.ok && verifyData.success) {
+            window.location.href = 'success.html';
+          } else {
+            msg.textContent = `❌ Payment verification failed`;
+            msg.className = 'error';
+            window.location.href = 'failure.html';
+          }
+        } catch (err) {
+          msg.textContent = '❌ Error verifying payment';
+          msg.className = 'error';
+          window.location.href = 'failure.html';
+        }
+      },
+      modal: { ondismiss: function(){ msg.textContent = 'Payment cancelled.'; msg.className = 'error'; window.location.href = 'failure.html'; } }
+    };
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', function(){ window.location.href = 'failure.html'; });
+    rzp.open();
   } catch (err) {
     console.error(err);
     msg.textContent = '❌ Registration failed!';

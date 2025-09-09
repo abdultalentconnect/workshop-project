@@ -2,10 +2,20 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
+const Razorpay = require('razorpay');
 const connection = require('./db');
+const util = require('util');
+require('dotenv').config();
 
 const app = express();
-app.use(cors());
+
+// CORS configuration for production
+const corsOptions = {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "../frontend"))); 
 
@@ -54,16 +64,16 @@ app.get('/event', (req, res) => {
 // update event
 
 app.put('/event', (req, res) => {
-    const { title, date, time, about, features } = req.body;
+    const { title, date, time, about, features, price } = req.body;
     const featuresStr = Array.isArray(features) ? features.join(',') : features || '';
 
     const sql = `
         UPDATE event_details
-        SET title=?, date=?, time=?, about=?, features=?
+        SET title=?, date=?, time=?, about=?, features=?, price=?
         ORDER BY id DESC
         LIMIT 1
     `;
-    connection.query(sql, [title, date, time, about, featuresStr], (err) => {
+    connection.query(sql, [title, date, time, about, featuresStr, price || null], (err) => {
         if (err) return res.status(500).json({ success: false, message: "Database error" });
         res.json({ success: true, message: "Latest event updated successfully" });
     });
@@ -83,14 +93,98 @@ app.get('/registrations', (req, res) => {
 // register participant
 
 app.post('/register', (req, res) => {
-    const { fullName, email, phone, org, role } = req.body;
-    const sql = "INSERT INTO registration (fullName, email, phone, org, role) VALUES (?, ?, ?, ?, ?)";
-    connection.query(sql, [fullName, email, phone, org, role], (err, results) => {
+    const { fullName, email, phone, org, role, amount } = req.body;
+    const sql = "INSERT INTO registration (fullName, email, phone, org, role, amount, status) VALUES (?, ?, ?, ?, ?, ?, 'Unpaid')";
+    connection.query(sql, [fullName, email, phone, org, role, amount || null], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: "Database error" });
         res.json({ success: true, id: results.insertId });
     });
 });
 
+// Razorpay setup (load credentials from DB when needed)
+const query = util.promisify(connection.query).bind(connection);
+
+async function getActiveRazorpayCredentials() {
+	try {
+		const rows = await query(
+			"SELECT key_id, key_secret FROM payment_credentials LIMIT 1"
+		);
+		if (rows && rows.length > 0) {
+			return { key_id: rows[0].key_id, key_secret: rows[0].key_secret };
+		}
+	} catch (e) {
+		console.error('Failed to load Razorpay credentials from DB:', e);
+	}
+	// Fallback to environment variables if DB row not found
+	return {
+		key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_RCoCmseFQFOsZV',
+		key_secret: process.env.RAZORPAY_KEY_SECRET || 'ywTSC2Rc5Wu9JlAUlYWVNew5'
+	};
+}
+
+async function getRazorpayClient() {
+	const creds = await getActiveRazorpayCredentials();
+	return new Razorpay({ key_id: creds.key_id, key_secret: creds.key_secret });
+}
+
+// Create order endpoint
+app.post('/create-order', async (req, res) => {
+    try {
+        const { amount, currency = 'INR', receipt, notes } = req.body;
+        if (!amount) return res.status(400).json({ message: 'Amount required' });
+
+        const options = { amount: Number(amount) * 100, currency, receipt: receipt || `rcpt_${Date.now()}`, notes };
+        const razorpay = await getRazorpayClient();
+        const order = await razorpay.orders.create(options);
+        res.json({
+            id: order.id,
+            amount: order.amount,
+            currency: order.currency
+        });
+    } catch (err) {
+        console.error('Razorpay order error', err);
+        res.status(500).json({ message: 'Failed to create order' });
+    }
+});
+
+// Verify payment endpoint
+app.post('/verify-payment', async (req, res) => {
+	try {
+		const { razorpay_order_id, razorpay_payment_id, razorpay_signature, registrationId } = req.body;
+		if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+			return res.status(400).json({ message: 'Missing fields' });
+		}
+
+		const { key_secret } = await getActiveRazorpayCredentials();
+		const generatedSignature = crypto
+			.createHmac('sha256', key_secret)
+			.update(razorpay_order_id + '|' + razorpay_payment_id)
+			.digest('hex');
+
+		if (generatedSignature === razorpay_signature) {
+			// Mark registration as paid if registrationId provided
+			if (registrationId) {
+				const updateSql = "UPDATE registration SET status='Paid' WHERE id=?";
+				connection.query(updateSql, [registrationId], (err) => {
+					if (err) console.error('Failed to update payment status:', err);
+				});
+			}
+			return res.json({ success: true });
+		}
+		return res.status(400).json({ success: false, message: 'Invalid signature' });
+	} catch (err) {
+		console.error('Verify error', err);
+		res.status(500).json({ message: 'Verification failed' });
+	}
+});
+
 // start server
-const PORT = 3000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
+    console.log(`Environment: ${NODE_ENV}`);
+    console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+});

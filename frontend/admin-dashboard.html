@@ -314,6 +314,28 @@ async function loadRegistrations(){
 
 loadEvent();
 loadRegistrations();
+
+// Auto-refresh registrations every 5 seconds when tab is visible
+let regRefreshTimer = null;
+function startRegAutoRefresh(){
+  if (regRefreshTimer) return;
+  regRefreshTimer = setInterval(()=>{
+    if (document.visibilityState === 'visible') {
+      loadRegistrations();
+    }
+  }, 5000);
+}
+function stopRegAutoRefresh(){
+  if (regRefreshTimer) {
+    clearInterval(regRefreshTimer);
+    regRefreshTimer = null;
+  }
+}
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState === 'visible') startRegAutoRefresh();
+});
+window.addEventListener('beforeunload', stopRegAutoRefresh);
+startRegAutoRefresh();
 </script>
 
 </body>
