@@ -45,7 +45,7 @@ button { padding:10px 15px; margin-top:10px; cursor:pointer; border:none; border
 // Load event details from backend
 async function loadEvent() {
     try {
-        const res = await fetch('http://localhost:3000/event');
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`);
         const data = await res.json();
 
         document.getElementById('title').value = data.title || '';
@@ -94,7 +94,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
                         .filter(f => f);
 
   try {
-    const res = await fetch('http://localhost:3000/event', {
+    const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, date, time, about, features })

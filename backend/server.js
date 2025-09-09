@@ -11,7 +11,7 @@ const app = express();
 
 // CORS configuration for production
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:4000',
     credentials: true
 };
 app.use(cors(corsOptions));
@@ -176,14 +176,14 @@ app.post('/verify-payment', async (req, res) => {
 });
 
 // start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 const HOST = process.env.HOST || '0.0.0.0';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const server = app.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
     console.log(`Environment: ${NODE_ENV}`);
-    console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+    console.log(`Frontend URL: ${process.env.FRONTEND_URL || ''}`);
 });
 
 // Increase max listeners to prevent warnings

@@ -201,6 +201,7 @@ tr:hover{
 
 </main>
 
+<script src="config.js"></script>
 <script>
 // Logout
 document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -221,7 +222,7 @@ if (sessionStorage.getItem('adminLoggedIn') !== 'true') {
 // Load event details
 async function loadEvent() {
   try {
-    const res = await fetch('http://localhost:3000/event');
+    const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`);
     const data = await res.json();
 
     document.getElementById('title').value = data.title || '';
@@ -264,7 +265,7 @@ document.getElementById('saveBtn').addEventListener('click', async()=>{
   const price = Number(document.getElementById('price').value);
 
   try{
-    const res=await fetch('http://localhost:3000/event',{
+    const res=await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`,{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({title,date,time,about,features,price})
@@ -289,7 +290,7 @@ document.getElementById('saveBtn').addEventListener('click', async()=>{
 // Load registrations
 async function loadRegistrations(){
   try{
-    const res=await fetch('http://localhost:3000/registrations');
+    const res=await fetch(`${window.APP_CONFIG.API_BASE_URL}/registrations`);
     const data=await res.json();
     const tbody=document.getElementById('regTable');
     tbody.innerHTML='';

@@ -7,7 +7,7 @@ const getApiBaseUrl = () => {
         return window.location.origin;
     }
     // In development, use localhost
-    return 'http://localhost:3000';
+    return 'http://localhost:4000';
 };
 
 const getRazorpayKey = () => {
