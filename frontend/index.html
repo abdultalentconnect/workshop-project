@@ -296,10 +296,32 @@ document.getElementById('payNowBtn').addEventListener('click', async e => {
           window.location.href = 'failure.html';
         }
       },
-      modal: { ondismiss: function(){ msg.textContent = 'Payment cancelled.'; msg.className = 'error'; window.location.href = 'failure.html'; } }
+      modal: { ondismiss: async function(){ 
+        msg.textContent = 'Payment cancelled.'; 
+        msg.className = 'error'; 
+        // Send failure notification to backend
+        if (regData && regData.id) {
+          await fetch(`${window.APP_CONFIG.API_BASE_URL}/verify-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ registrationId: regData.id, status: 'cancelled' })
+          });
+        }
+        window.location.href = 'failure.html'; 
+      } },
     };
     const rzp = new Razorpay(options);
-    rzp.on('payment.failed', function(){ window.location.href = 'failure.html'; });
+    rzp.on('payment.failed', async function(){ 
+      // Send failure notification to backend
+      if (regData && regData.id) {
+        await fetch(`${window.APP_CONFIG.API_BASE_URL}/verify-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registrationId: regData.id, status: 'failed' })
+        });
+      }
+      window.location.href = 'failure.html'; 
+    });
     rzp.open();
   } catch (err) {
     console.error(err);

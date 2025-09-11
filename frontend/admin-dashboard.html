@@ -176,6 +176,9 @@ tr:hover{
     <label>Amount</label>
     <input id="price" type="number" placeholder="Set registration price">
 
+    <label>Event Link</label>
+    <input id="eventLink" type="text" placeholder="https://example.com/event-link">
+
     <button id="saveBtn">Save Changes</button>
     <p id="msg" class="msg"></p>
   </div>
@@ -230,6 +233,7 @@ async function loadEvent() {
     document.getElementById('time').value = data.time || '';
     document.getElementById('about').value = data.about || '';
     document.getElementById('price').value = data.price || '';
+    document.getElementById('eventLink').value = data.eventLink || '';
 
     const featuresContainer = document.getElementById('featuresContainer');
     featuresContainer.innerHTML = '';
@@ -263,12 +267,13 @@ document.getElementById('saveBtn').addEventListener('click', async()=>{
   const about=document.getElementById('about').value;
   const features=Array.from(document.querySelectorAll('.feature-input')).map(f=>f.value.trim()).filter(f=>f);
   const price = Number(document.getElementById('price').value);
+  const eventLink = document.getElementById('eventLink').value;
 
   try{
     const res=await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`,{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({title,date,time,about,features,price})
+      body: JSON.stringify({title,date,time,about,features,price,eventLink})
     });
     const result=await res.json();
     const msg=document.getElementById('msg');
