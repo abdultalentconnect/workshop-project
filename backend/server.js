@@ -193,36 +193,70 @@ app.post('/verify-payment', async (req, res) => {
 				connection.query(updateSql, [registrationId], async (err) => {
 					if (err) console.error('Failed to update payment status:', err);
 					
+					// Fetch registration details for both emails
 					const registrationSql = "SELECT fullName, email, phone FROM registration WHERE id = ?";
 					connection.query(registrationSql, [registrationId], async (regErr, regResults) => {
-						if (regErr) console.error('Failed to fetch registration details:', regErr);
-						else if (regResults.length > 0) {
-							const candidate = regResults[0];
-							const eventSql = "SELECT title, date, time, eventLink FROM event_details ORDER BY id DESC LIMIT 1";
-							connection.query(eventSql, async (eventErr, eventResults) => {
-								if (eventErr) console.error('Failed to fetch event details:', eventErr);
-								else if (eventResults.length > 0) {
-									const event = eventResults[0];
-									const actualEventLink = event.eventLink || (process.env.FRONTEND_URL || 'http://localhost:4000');
-									const subject = "🎉 You’re In! Workshop Registration Confirmed";
-									const textContent = `
-										<p>Hi ${candidate.fullName},</p>
-										<p>Great news – your spot for the TalentConnect Workshop is confirmed! 🚀</p>
-										<p>Here are your details:</p>
-										<p>📌 Topic: ${event.title}</p>
-										<p>📅 Date: ${event.date}</p>
-										<p>⏰ Time: ${event.time}</p>
-										<p>🔗 Event Link: <a href="${actualEventLink}">${actualEventLink}</a></p>
-										<p>👉 Tip: Join at least 10 mins early so you don’t miss anything!</p>
-										<p>Get ready for an exciting session filled with practical learning, real-world insights, and Q&A.</p>
-										<p>If you face any issues, just mail us at <a href="mailto:support@talentsconnectss.com">support@talentsconnectss.com</a> – we’ve got you covered.</p>
-										<p>See you at the workshop! 🙌</p>
-										<p>Cheers,<br/>Team TalentConnect<br/>Campus to Cubicle</p>
-									`;
-									await sendEmail(candidate.email, subject, textContent);
-								}
-							});
+						if (regErr) {
+							console.error('Failed to fetch registration details for email:', regErr);
+							return;
 						}
+						if (regResults.length === 0) {
+							console.error('Registration not found for ID:', registrationId);
+							return;
+						}
+						const candidate = regResults[0];
+						
+						// 1. Send immediate Payment Successful email
+						const paymentSuccessSubject = "✅ Payment Successful – Thank You for Registering!";
+						const paymentSuccessHtmlContent = `
+							<p>Hi ${candidate.fullName},</p>
+							<p>Thank you for registering for the TalentConnect Workshop! 🎉</p>
+							<p>We’ve received your payment successfully.<br/>What’s next?</p>
+							<ul>
+								<li>🔹 You’ll shortly receive a confirmation email with all the event details (topic, date, time & joining link).</li>
+								<li>🔹 Keep an eye on your inbox (and check your spam folder, just in case).</li>
+								<li>🔹 Block your calendar to make sure you don’t miss out!</li>
+							</ul>
+							<p>We’re excited to have you join us and can’t wait to help you learn, build, and grow with TalentConnect 🚀.</p>
+							<p>If you face any issues, please reach out to us at <a href="mailto:support@talentsconnectss.com">support@talentsconnectss.com</a>.</p>
+							<p>See you soon! 🙌</p>
+							<p>Warm Regards,<br/>Team TalentConnect<br/>Campus to Cubicle</p>
+						`;
+						await sendEmail(candidate.email, paymentSuccessSubject, paymentSuccessHtmlContent);
+						
+						// 2. Delay for 10 seconds before sending the second email
+						await new Promise(resolve => setTimeout(resolve, 10000));
+						
+						// Fetch event details for the second email
+						const eventSql = "SELECT title, date, time FROM event_details ORDER BY id DESC LIMIT 1";
+						connection.query(eventSql, async (eventErr, eventResults) => {
+							if (eventErr) {
+								console.error('Failed to fetch event details for confirmation email:', eventErr);
+								return;
+							}
+							if (eventResults.length === 0) {
+								console.error('No event details found for confirmation email.');
+								return;
+							}
+							const event = eventResults[0];
+							const eventLink = process.env.FRONTEND_URL || 'http://localhost:4000'; // Assuming frontend URL for event link
+							const confirmationSubject = "🎉 You’re In! Workshop Registration Confirmed";
+							const confirmationHtmlContent = `
+								<p>Hi ${candidate.fullName},</p>
+								<p>Great news – your spot for the TalentConnect Workshop is confirmed! 🚀</p>
+								<p>Here are your details:</p>
+								<p>📌 Topic: ${event.title}</p>
+								<p>📅 Date: ${event.date}</p>
+								<p>⏰ Time: ${event.time}</p>
+								<p>🔗 Event Link: <a href="${eventLink}">${eventLink}</a></p>
+								<p>👉 Tip: Join at least 10 mins early so you don’t miss anything!</p>
+								<p>Get ready for an exciting session filled with practical learning, real-world insights, and Q&A.</p>
+								<p>If you face any issues, just mail us at <a href="mailto:support@talentsconnectss.com">support@talentsconnectss.com</a> – we’ve got you covered.</p>
+								<p>See you at the workshop! 🙌</p>
+								<p>Cheers,<br/>Team TalentConnect<br/>Campus to Cubicle</p>
+							`;
+							await sendEmail(candidate.email, confirmationSubject, confirmationHtmlContent);
+						});
 					});
 				});
 			}
