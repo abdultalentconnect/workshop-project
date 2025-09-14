@@ -64,6 +64,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--ring);box-shadow:0 0 
 .twocol{display:grid;gap:1rem;grid-template-columns:1fr 1fr}
 
 .helper{color:#9ca3af;font-size:.9rem}
+.error{color:#ef4444;font-size:.9rem;margin-top:.2rem}
+.success{color:#10b981;font-size:.9rem;margin-top:.2rem}
 footer{padding:2rem 0;border-top:1px solid rgba(148,163,184,.12);color:#94a3b8;text-align:center;}
 footer a{color:#94a3b8;margin:0 .5rem;transition:color .3s;}
 footer a:hover{color:var(--brand-500);}
@@ -146,8 +148,8 @@ footer a:hover{color:var(--brand-500);}
 <section id="register">
   <form id="regForm">
     <input name="fullName" placeholder="Full Name" required>
-    <input name="email" placeholder="Email" type="email" required>
-    <input name="phone" placeholder="Phone" required>
+    <input name="email" placeholder="Email" type="email" required pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$" title="Enter a valid email address (e.g., example@domain.com)">
+    <input name="phone" placeholder="Phone" required pattern="^[0-9]{10}$" title="Enter a 10-digit phone number">
     <input name="org" placeholder="Organization / School">
     <input name="role" placeholder="Role / Position">
 
@@ -223,8 +225,9 @@ document.getElementById('payNowBtn').addEventListener('click', async e => {
   const payload = Object.fromEntries(new FormData(form).entries());
   const msg = document.getElementById('formMsg');
   if (!form.checkValidity()) {
-    msg.textContent = 'Please fill in all required fields.';
+    msg.textContent = 'Please fill in all required fields correctly.';
     msg.className = 'error';
+    form.reportValidity(); // Trigger browser's native validation messages
     return;
   }
   try {
@@ -239,6 +242,12 @@ document.getElementById('payNowBtn').addEventListener('click', async e => {
       msg.textContent = `❌ ${regData.message || 'Failed to register'}`;
       msg.className = 'error';
       return;
+    }
+    
+    // Show success message for new registration or update
+    if (regData.message) {
+      msg.textContent = `✅ ${regData.message}`;
+      msg.className = 'success';
     }
 
     // 2) Create Razorpay order

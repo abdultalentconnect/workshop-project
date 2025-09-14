@@ -7,6 +7,7 @@ const connection = require('./db');
 const util = require('util');
 require('dotenv').config();
 const nodemailer = require('nodemailer');
+const twilio = require('twilio'); // Import Twilio SDK
 
 const app = express();
 
@@ -93,10 +94,46 @@ app.get('/registrations', (req, res) => {
 // ----------------- REGISTER PARTICIPANT -----------------
 app.post('/register', (req, res) => {
     const { fullName, email, phone, org, role, amount } = req.body;
-    const sql = "INSERT INTO registration (fullName, email, phone, org, role, amount, status) VALUES (?, ?, ?, ?, ?, ?, 'Unpaid')";
-    connection.query(sql, [fullName, email, phone, org, role, amount || null], (err, results) => {
+    
+    // First, check if email already exists
+    const checkEmailSql = "SELECT id, status FROM registration WHERE email = ?";
+    connection.query(checkEmailSql, [email], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: "Database error" });
-        res.json({ success: true, id: results.insertId });
+        
+        if (results.length > 0) {
+            const existingRegistration = results[0];
+            
+            // If email exists and already paid
+            if (existingRegistration.status === 'Paid') {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "This email is already registered and payment has been completed. You cannot register again with this email.",
+                    alreadyPaid: true 
+                });
+            }
+            
+            // If email exists but not paid, update the existing record
+            if (existingRegistration.status === 'Unpaid') {
+                const updateSql = "UPDATE registration SET fullName=?, phone=?, org=?, role=?, amount=? WHERE id=?";
+                connection.query(updateSql, [fullName, phone, org, role, amount || null, existingRegistration.id], (updateErr) => {
+                    if (updateErr) return res.status(500).json({ success: false, message: "Database error" });
+                    res.json({ 
+                        success: true, 
+                        id: existingRegistration.id, 
+                        message: "Registration updated successfully. Please proceed with payment.",
+                        updated: true 
+                    });
+                });
+                return;
+            }
+        }
+        
+        // If email doesn't exist, create new registration
+        const insertSql = "INSERT INTO registration (fullName, email, phone, org, role, amount, status) VALUES (?, ?, ?, ?, ?, ?, 'Unpaid')";
+        connection.query(insertSql, [fullName, email, phone, org, role, amount || null], (insertErr, insertResults) => {
+            if (insertErr) return res.status(500).json({ success: false, message: "Database error" });
+            res.json({ success: true, id: insertResults.insertId, message: "Registration successful. Please proceed with payment." });
+        });
     });
 });
 
@@ -286,6 +323,38 @@ app.post('/verify-payment', async (req, res) => {
 		}
 		res.status(500).json({ message: 'Verification failed' });
 	}
+});
+
+// ----------------- SEND WHATSAPP MESSAGE -----------------
+app.post('/send-whatsapp', async (req, res) => {
+    const { to, message } = req.body; // 'to' should be the recipient's phone number with country code (e.g., +1234567890)
+
+    if (!to || !message) {
+        return res.status(400).json({ success: false, message: 'Recipient phone number and message are required.' });
+    }
+
+    // Twilio credentials from .env
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER; // e.g., 'whatsapp:+14155238886' or your purchased Twilio number
+
+    // Initialize Twilio client
+    const client = new twilio(accountSid, authToken);
+
+    try {
+        await client.messages.create({
+            body: message,
+            from: `whatsapp:${twilioWhatsAppNumber}`, // Your Twilio WhatsApp number (e.g., whatsapp:+17816784772)
+            to: `whatsapp:${to}` // Recipient's WhatsApp number
+        });
+
+        console.log('WhatsApp message sent successfully via Twilio');
+        res.json({ success: true, message: 'WhatsApp message sent successfully via Twilio.' });
+
+    } catch (error) {
+        console.error('Error sending WhatsApp message via Twilio:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to send WhatsApp message via Twilio.' });
+    }
 });
 
 // Email transporter setup
