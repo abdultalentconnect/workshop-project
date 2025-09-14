@@ -116,7 +116,7 @@ footer a:hover{color:var(--brand-500);}
     <div>
       <div class="card">
         <h3 style="margin:.2rem 0 .6rem">Who is this for?</h3>
-        <ul style="margin:0;padding-left:1.1rem;color:#cbd5e1">
+        <ul id="targetAudienceList" style="margin:0;padding-left:1.1rem;color:#cbd5e1">
           <li>Students & early-career developers</li>
           <li>Product / project enthusiasts</li>
           <li>Anyone curious about AI tools</li>
@@ -186,6 +186,10 @@ async function loadEvent() {
   try {
     const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`);
     const data = await res.json();
+    // Update brand information
+    document.getElementById('brandName').textContent = data.brandName || 'Event';
+    document.querySelector('.logo').textContent = data.brandLogo || 'HT';
+    
     document.getElementById('title').textContent = data.title || 'Event Title';
     document.getElementById('eventType').textContent = data.title || 'Event';
     document.getElementById('tagline').textContent = data.tagline || '';
@@ -205,6 +209,24 @@ async function loadEvent() {
       });
     } else {
       grid.innerHTML = '<p style="color:#9ca3af">Details coming soon...</p>';
+    }
+
+    // Load target audience dynamically
+    const targetAudienceList = document.getElementById('targetAudienceList');
+    targetAudienceList.innerHTML = '';
+    if (data.targetAudience && Array.isArray(data.targetAudience) && data.targetAudience.length > 0) {
+      data.targetAudience.forEach(audience => {
+        const li = document.createElement('li');
+        li.textContent = audience;
+        targetAudienceList.appendChild(li);
+      });
+    } else {
+      // Default content if no target audience is set
+      targetAudienceList.innerHTML = `
+        <li>Students & early-career developers</li>
+        <li>Product / project enthusiasts</li>
+        <li>Anyone curious about AI tools</li>
+      `;
     }
 
     // Load price dynamically if available

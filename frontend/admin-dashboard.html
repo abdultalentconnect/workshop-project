@@ -157,6 +157,12 @@ tr:hover{
   <div class="container">
     <h2>Edit Event Details</h2>
 
+    <label>Brand Logo</label>
+    <input id="brandLogo" type="text" placeholder="e.g., HT, AI, WS">
+
+    <label>Brand Name</label>
+    <input id="brandName" type="text" placeholder="e.g., Event, Workshop, Hackathon">
+
     <label>Title</label>
     <input id="title" type="text">
 
@@ -172,6 +178,10 @@ tr:hover{
     <label>What You Will Learn</label>
     <div id="featuresContainer"></div>
     <button id="addFeatureBtn" type="button">+ Add Feature</button>
+
+    <label>Who is this for?</label>
+    <div id="targetAudienceContainer"></div>
+    <button id="addTargetAudienceBtn" type="button">+ Add Target Audience</button>
 
     <label>Amount</label>
     <input id="price" type="number" placeholder="Set registration price">
@@ -228,6 +238,8 @@ async function loadEvent() {
     const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`);
     const data = await res.json();
 
+    document.getElementById('brandLogo').value = data.brandLogo || 'HT';
+    document.getElementById('brandName').value = data.brandName || 'Event';
     document.getElementById('title').value = data.title || '';
     document.getElementById('date').value = data.date || '';
     document.getElementById('time').value = data.time || '';
@@ -247,6 +259,20 @@ async function loadEvent() {
       input.placeholder=`Feature ${i+1}`;
       featuresContainer.appendChild(input);
     });
+
+    // Load target audience
+    const targetAudienceContainer = document.getElementById('targetAudienceContainer');
+    targetAudienceContainer.innerHTML = '';
+    const targetAudience = Array.isArray(data.targetAudience) ? data.targetAudience : [];
+    if (targetAudience.length === 0) targetAudience.push('');
+    targetAudience.forEach((a,i)=>{
+      const input = document.createElement('input');
+      input.type='text';
+      input.className='target-audience-input';
+      input.value=a;
+      input.placeholder=`Target Audience ${i+1}`;
+      targetAudienceContainer.appendChild(input);
+    });
   } catch(err){console.error('Failed to load event:',err);}
 }
 
@@ -259,13 +285,25 @@ document.getElementById('addFeatureBtn').addEventListener('click',()=>{
   document.getElementById('featuresContainer').appendChild(input);
 });
 
+// Add new target audience input
+document.getElementById('addTargetAudienceBtn').addEventListener('click',()=>{
+  const input=document.createElement('input');
+  input.type='text';
+  input.className='target-audience-input';
+  input.placeholder=`Target Audience ${document.getElementById('targetAudienceContainer').children.length +1}`;
+  document.getElementById('targetAudienceContainer').appendChild(input);
+});
+
 // Save changes
 document.getElementById('saveBtn').addEventListener('click', async()=>{
+  const brandLogo=document.getElementById('brandLogo').value;
+  const brandName=document.getElementById('brandName').value;
   const title=document.getElementById('title').value;
   const date=document.getElementById('date').value;
   const time=document.getElementById('time').value;
   const about=document.getElementById('about').value;
   const features=Array.from(document.querySelectorAll('.feature-input')).map(f=>f.value.trim()).filter(f=>f);
+  const targetAudience=Array.from(document.querySelectorAll('.target-audience-input')).map(a=>a.value.trim()).filter(a=>a);
   const price = Number(document.getElementById('price').value);
   const eventLink = document.getElementById('eventLink').value;
 
@@ -273,7 +311,7 @@ document.getElementById('saveBtn').addEventListener('click', async()=>{
     const res=await fetch(`${window.APP_CONFIG.API_BASE_URL}/event`,{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({title,date,time,about,features,price,eventLink})
+      body: JSON.stringify({brandLogo,brandName,title,date,time,about,features,targetAudience,price,eventLink})
     });
     const result=await res.json();
     const msg=document.getElementById('msg');

@@ -25,7 +25,10 @@
             about TEXT,
             features TEXT,
             price DECIMAL(10, 2) DEFAULT 0.00,
-            eventLink VARCHAR(255) 
+            eventLink VARCHAR(255),
+            targetAudience TEXT,
+            brandLogo VARCHAR(255),
+            brandName VARCHAR(255)
         );
         `;
 
@@ -42,6 +45,39 @@
             connection.query(addEventLinkColumn, (err) => {
                 if (err) throw err;
                 console.log("eventLink column checked/added.");
+                
+                // Add targetAudience column if it doesn't exist
+                const addTargetAudienceColumn = `
+                ALTER TABLE event_details
+                ADD COLUMN IF NOT EXISTS targetAudience TEXT;
+                `;
+
+                connection.query(addTargetAudienceColumn, (err) => {
+                    if (err) throw err;
+                    console.log("targetAudience column checked/added.");
+                    
+                    // Add brandLogo column if it doesn't exist
+                    const addBrandLogoColumn = `
+                    ALTER TABLE event_details
+                    ADD COLUMN IF NOT EXISTS brandLogo VARCHAR(255);
+                    `;
+
+                    connection.query(addBrandLogoColumn, (err) => {
+                        if (err) throw err;
+                        console.log("brandLogo column checked/added.");
+                        
+                        // Add brandName column if it doesn't exist
+                        const addBrandNameColumn = `
+                        ALTER TABLE event_details
+                        ADD COLUMN IF NOT EXISTS brandName VARCHAR(255);
+                        `;
+
+                        connection.query(addBrandNameColumn, (err) => {
+                            if (err) throw err;
+                            console.log("brandName column checked/added.");
+                        });
+                    });
+                });
             });
         });
     });

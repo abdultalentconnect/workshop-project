@@ -48,6 +48,18 @@ app.get('/event', (req, res) => {
             }
 
             event.price = event.price || 0; // added price field
+            
+            // Convert targetAudience string to array
+            if (typeof event.targetAudience === 'string' && event.targetAudience.length > 0) {
+                event.targetAudience = event.targetAudience.split(',').map(a => a.trim());
+            } else {
+                event.targetAudience = [];
+            }
+            
+            // Set default brand values if not set
+            event.brandLogo = event.brandLogo || 'HT';
+            event.brandName = event.brandName || 'Event';
+            
             res.json(event);
         } else {
             res.json({
@@ -57,7 +69,10 @@ app.get('/event', (req, res) => {
                 about: "",
                 features: [],
                 price: 0,
-                eventLink: ""
+                eventLink: "",
+                targetAudience: [],
+                brandLogo: "HT",
+                brandName: "Event"
             });
         }
     });
@@ -65,18 +80,19 @@ app.get('/event', (req, res) => {
 
 // ----------------- UPDATE EVENT -----------------
 app.put('/event', (req, res) => {
-    const { title, date, time, about, features, price, eventLink } = req.body;
+    const { title, date, time, about, features, price, eventLink, targetAudience, brandLogo, brandName } = req.body;
     const featuresStr = Array.isArray(features) ? features.join(',') : features || '';
+    const targetAudienceStr = Array.isArray(targetAudience) ? targetAudience.join(',') : targetAudience || '';
 
     const sql = `
         UPDATE event_details
-        SET title=?, date=?, time=?, about=?, features=?, price=?, eventLink=?
+        SET title=?, date=?, time=?, about=?, features=?, price=?, eventLink=?, targetAudience=?, brandLogo=?, brandName=?
         WHERE id = (
             SELECT id FROM (SELECT id FROM event_details ORDER BY id DESC LIMIT 1) AS t
         )
     `;
 
-    connection.query(sql, [title, date, time, about, featuresStr, price, eventLink], (err) => {
+    connection.query(sql, [title, date, time, about, featuresStr, price, eventLink, targetAudienceStr, brandLogo, brandName], (err) => {
         if (err) return res.status(500).json({ success: false, message: "Database error" });
         res.json({ success: true, message: "Latest event updated successfully" });
     });
