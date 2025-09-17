@@ -10,11 +10,7 @@ const getApiBaseUrl = () => {
     return 'http://localhost:4000';
 };
 
-const getRazorpayKey = () => {
-    // In production, this should be loaded from your backend or environment
-    // For now, using the test key - replace with your actual key
-    return 'rzp_test_RCoCmseFQFOsZV';
-};
+const getRazorpayKey = () => null; // No longer used; key comes from backend
 
 // Export configuration
 window.APP_CONFIG = {

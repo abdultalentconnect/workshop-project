@@ -294,7 +294,7 @@ document.getElementById('payNowBtn').addEventListener('click', async e => {
 
     // 3) Open Razorpay checkout
     const options = {
-      key: window.APP_CONFIG.RAZORPAY_KEY,
+      key: orderData.key,
       amount: orderData.amount,
       currency: 'INR',
       name: document.getElementById('brandName').textContent || 'Event',

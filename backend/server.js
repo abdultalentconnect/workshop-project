@@ -153,30 +153,21 @@ app.post('/register', (req, res) => {
     });
 });
 
-// Razorpay setup (load credentials from DB when needed)
+// Razorpay setup (env-only)
 const query = util.promisify(connection.query).bind(connection);
 
-async function getActiveRazorpayCredentials() {
-	try {
-		const rows = await query(
-			"SELECT key_id, key_secret FROM payment_credentials LIMIT 1"
-		);
-		if (rows && rows.length > 0) {
-			return { key_id: rows[0].key_id, key_secret: rows[0].key_secret };
-		}
-	} catch (e) {
-		console.error('Failed to load Razorpay credentials from DB:', e);
-	}
-	// Fallback to environment variables if DB row not found
-	return {
-		key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_RCoCmseFQFOsZV',
-		key_secret: process.env.RAZORPAY_KEY_SECRET || 'ywTSC2Rc5Wu9JlAUlYWVNew5'
-	};
+function getActiveRazorpayCredentials() {
+    const key_id = process.env.RAZORPAY_KEY_ID;
+    const key_secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!key_id || !key_secret) {
+        throw new Error('Missing Razorpay credentials. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env');
+    }
+    return { key_id, key_secret };
 }
 
-async function getRazorpayClient() {
-	const creds = await getActiveRazorpayCredentials();
-	return new Razorpay({ key_id: creds.key_id, key_secret: creds.key_secret });
+function getRazorpayClient() {
+    const creds = getActiveRazorpayCredentials();
+    return new Razorpay({ key_id: creds.key_id, key_secret: creds.key_secret });
 }
 
 // Create order endpoint
@@ -186,12 +177,14 @@ app.post('/create-order', async (req, res) => {
         if (!amount) return res.status(400).json({ message: 'Amount required' });
 
         const options = { amount: Number(amount) * 100, currency, receipt: receipt || `rcpt_${Date.now()}`, notes };
-        const razorpay = await getRazorpayClient();
+        const razorpay = getRazorpayClient();
         const order = await razorpay.orders.create(options);
+        const { key_id } = getActiveRazorpayCredentials();
         res.json({
             id: order.id,
             amount: order.amount,
-            currency: order.currency
+            currency: order.currency,
+            key: key_id
         });
     } catch (err) {
         console.error('Razorpay order error', err);
@@ -233,7 +226,7 @@ app.post('/verify-payment', async (req, res) => {
 			return res.status(400).json({ message: 'Missing fields' });
 		}
 
-		const { key_secret } = await getActiveRazorpayCredentials();
+        const { key_secret } = getActiveRazorpayCredentials();
 		const generatedSignature = crypto
 			.createHmac('sha256', key_secret)
 			.update(razorpay_order_id + '|' + razorpay_payment_id)
