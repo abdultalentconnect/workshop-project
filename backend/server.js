@@ -393,17 +393,56 @@ app.post('/send-whatsapp', async (req, res) => {
     }
 });
 
-// Email transporter setup
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+// Email transporter setup (supports Gmail, SMTP service, or custom host)
+let transporter = null;
+
+try {
+    const smtpUrl = process.env.SMTP_URL;
+    const smtpService = process.env.SMTP_SERVICE || process.env.EMAIL_SERVICE; // e.g., 'gmail'
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
+    const smtpSecureEnv = process.env.SMTP_SECURE;
+    const smtpSecure = typeof smtpSecureEnv === 'string' ? smtpSecureEnv.toLowerCase() === 'true' : undefined;
+
+    const emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
+    const emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
+
+    if (smtpUrl) {
+        transporter = nodemailer.createTransport(smtpUrl);
+    } else if (smtpHost) {
+        if (!emailUser || !emailPass) {
+            console.error('Email disabled: Missing SMTP_USER/SMTP_PASS (or EMAIL_USER/EMAIL_PASS) for custom SMTP host.');
+        } else {
+            transporter = nodemailer.createTransport({
+                host: smtpHost,
+                port: smtpPort || 587,
+                secure: typeof smtpSecure === 'boolean' ? smtpSecure : false,
+                auth: { user: emailUser, pass: emailPass }
+            });
+        }
+    } else if (smtpService || emailUser || emailPass) {
+        // Default to service transport (gmail or others) if any related env is present
+        if (!emailUser || !emailPass) {
+            console.error('Email disabled: Missing EMAIL_USER/EMAIL_PASS (or SMTP_USER/SMTP_PASS).');
+        } else {
+            transporter = nodemailer.createTransport({
+                service: smtpService || 'gmail',
+                auth: { user: emailUser, pass: emailPass }
+            });
+        }
+    } else {
+        console.warn('Email transporter not configured. Set SMTP_URL or SMTP_HOST with credentials, or EMAIL_USER/EMAIL_PASS for Gmail.');
     }
-});
+} catch (e) {
+    console.error('Failed to configure email transporter:', e);
+    transporter = null;
+}
 
 async function sendEmail(to, subject, content) {
     try {
+        if (!transporter) {
+            throw new Error('Email transporter is not configured.');
+        }
         let htmlContent;
 
         // Check if the content already contains HTML tags
@@ -416,8 +455,9 @@ async function sendEmail(to, subject, content) {
             htmlContent = `<p>${htmlContent}</p>`;
         }
 
+        const fromAddress = (process.env.EMAIL_FROM || process.env.EMAIL_USER || process.env.SMTP_USER || 'no-reply@localhost');
         const info = await transporter.sendMail({
-			from: process.env.EMAIL_USER,
+			from: fromAddress,
             to,
             subject,
             html: htmlContent,
