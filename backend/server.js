@@ -20,6 +20,33 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../frontend")));
 
+// ----------------- DB AVAILABILITY MIDDLEWARE -----------------
+function requireDb(req, res, next) {
+    try {
+        const status = typeof connection.getDbStatus === 'function' ? connection.getDbStatus() : { connected: true };
+        if (!status.connected) {
+            return res.status(503).json({
+                success: false,
+                message: 'Service temporarily unavailable: database is not connected.',
+                hint: 'Please try again later or contact support.'
+            });
+        }
+        return next();
+    } catch (e) {
+        return res.status(503).json({ success: false, message: 'Service temporarily unavailable' });
+    }
+}
+
+// ----------------- HEALTH -----------------
+app.get('/health', (req, res) => {
+    try {
+        const dbStatus = typeof connection.getDbStatus === 'function' ? connection.getDbStatus() : { connected: false };
+        res.json({ status: 'ok', db: dbStatus });
+    } catch (e) {
+        res.status(200).json({ status: 'ok', db: { connected: false } });
+    }
+});
+
 // ----------------- ADMIN LOGIN -----------------
 app.post('/admin/login', (req, res) => {
     const { email, password } = req.body;
@@ -32,7 +59,7 @@ app.post('/admin/login', (req, res) => {
 });
 
 // ----------------- GET LATEST EVENT -----------------
-app.get('/event', (req, res) => {
+app.get('/event', requireDb, (req, res) => {
     const sql = "SELECT * FROM event_details ORDER BY id DESC LIMIT 1";
     connection.query(sql, (err, results) => {
         if (err) return res.status(500).json({ message: "Database error" });
@@ -79,7 +106,7 @@ app.get('/event', (req, res) => {
 });
 
 // ----------------- UPDATE EVENT -----------------
-app.put('/event', (req, res) => {
+app.put('/event', requireDb, (req, res) => {
     const { title, date, time, about, features, price, eventLink, targetAudience, brandLogo, brandName } = req.body;
     const featuresStr = Array.isArray(features) ? features.join(',') : features || '';
     const targetAudienceStr = Array.isArray(targetAudience) ? targetAudience.join(',') : targetAudience || '';
@@ -99,7 +126,7 @@ app.put('/event', (req, res) => {
 });
 
 // ----------------- GET REGISTRATIONS -----------------
-app.get('/registrations', (req, res) => {
+app.get('/registrations', requireDb, (req, res) => {
     const sql = "SELECT * FROM registration ORDER BY id DESC";
     connection.query(sql, (err, results) => {
         if (err) return res.status(500).json({ message: "Database error" });
@@ -108,7 +135,7 @@ app.get('/registrations', (req, res) => {
 });
 
 // ----------------- REGISTER PARTICIPANT -----------------
-app.post('/register', (req, res) => {
+app.post('/register', requireDb, (req, res) => {
     const { fullName, email, phone, org, role, amount } = req.body;
     
     // First, check if email already exists

@@ -10,12 +10,19 @@
         port: process.env.DB_PORT,
         ssl: { rejectUnauthorized: false }
     });
+    
+    let isConnected = false;
 
     connection.connect(err => {
-        if (err) throw err;
+        if (err) {
+            console.error("MySQL connection failed:", err && err.message ? err.message : err);
+            isConnected = false;
+            return; // Do not throw; allow server to start without DB
+        }
+        isConnected = true;
         console.log("Connected to MySQL");
 
-        // Create event_details table if not exists
+        // Create event_details table if not exists (only when connected)
         const createEventDetailsTable = `
         CREATE TABLE IF NOT EXISTS event_details (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -33,7 +40,10 @@
         `;
 
         connection.query(createEventDetailsTable, (err) => {
-            if (err) throw err;
+            if (err) {
+                console.error("Failed to ensure event_details table:", err && err.message ? err.message : err);
+                return;
+            }
             console.log("Event details table checked/created.");
 
             // Add eventLink column if it doesn't exist
@@ -43,7 +53,10 @@
             `;
 
             connection.query(addEventLinkColumn, (err) => {
-                if (err) throw err;
+                if (err) {
+                    console.error("Failed to ensure eventLink column:", err && err.message ? err.message : err);
+                    return;
+                }
                 console.log("eventLink column checked/added.");
                 
                 // Add targetAudience column if it doesn't exist
@@ -53,7 +66,10 @@
                 `;
 
                 connection.query(addTargetAudienceColumn, (err) => {
-                    if (err) throw err;
+                    if (err) {
+                        console.error("Failed to ensure targetAudience column:", err && err.message ? err.message : err);
+                        return;
+                    }
                     console.log("targetAudience column checked/added.");
                     
                     // Add brandLogo column if it doesn't exist
@@ -63,7 +79,10 @@
                     `;
 
                     connection.query(addBrandLogoColumn, (err) => {
-                        if (err) throw err;
+                        if (err) {
+                            console.error("Failed to ensure brandLogo column:", err && err.message ? err.message : err);
+                            return;
+                        }
                         console.log("brandLogo column checked/added.");
                         
                         // Add brandName column if it doesn't exist
@@ -73,7 +92,10 @@
                         `;
 
                         connection.query(addBrandNameColumn, (err) => {
-                            if (err) throw err;
+                            if (err) {
+                                console.error("Failed to ensure brandName column:", err && err.message ? err.message : err);
+                                return;
+                            }
                             console.log("brandName column checked/added.");
                         });
                     });
@@ -81,5 +103,15 @@
             });
         });
     });
+
+    // Attach helpers while preserving existing export shape
+    connection.getDbStatus = function() {
+        return { connected: isConnected };
+    };
+
+    connection.tryPing = function(callback) {
+        if (!isConnected) return callback(new Error('Not connected'));
+        connection.ping(callback);
+    };
 
     module.exports = connection;
