@@ -48,7 +48,7 @@ app.get('/health', (req, res) => {
 });
 
 // ----------------- ADMIN LOGIN -----------------
-app.post('/admin/login', (req, res) => {
+app.post('/admin/login', requireDb, (req, res) => {
     const { email, password } = req.body;
     const sql = "SELECT * FROM admin WHERE email = ? AND password = ?";
     connection.query(sql, [email, password], (err, results) => {

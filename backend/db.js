@@ -46,6 +46,39 @@
             }
             console.log("Event details table checked/created.");
 
+            // Create admin table if not exists
+            const createAdminTable = `
+            CREATE TABLE IF NOT EXISTS admin (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL
+            );
+            `;
+
+            connection.query(createAdminTable, (adminErr) => {
+                if (adminErr) {
+                    console.error("Failed to ensure admin table:", adminErr && adminErr.message ? adminErr.message : adminErr);
+                } else {
+                    console.log("Admin table checked/created.");
+
+                    // Optionally seed default admin if env provided
+                    const adminEmail = process.env.ADMIN_EMAIL;
+                    const adminPassword = process.env.ADMIN_PASSWORD;
+                    if (adminEmail && adminPassword) {
+                        const seedSql = "INSERT IGNORE INTO admin (email, password) VALUES (?, ?)";
+                        connection.query(seedSql, [adminEmail, adminPassword], (seedErr) => {
+                            if (seedErr) {
+                                console.error("Failed to seed default admin:", seedErr && seedErr.message ? seedErr.message : seedErr);
+                            } else {
+                                console.log("Default admin ensured (using ADMIN_EMAIL).");
+                            }
+                        });
+                    } else {
+                        console.warn("ADMIN_EMAIL/ADMIN_PASSWORD not set. Skipping default admin seed.");
+                    }
+                }
+            });
+
             // Add eventLink column if it doesn't exist
             const addEventLinkColumn = `
             ALTER TABLE event_details
