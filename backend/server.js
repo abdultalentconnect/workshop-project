@@ -408,7 +408,11 @@ try {
     const emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
 
     if (smtpUrl) {
-        transporter = nodemailer.createTransport(smtpUrl);
+        transporter = nodemailer.createTransport(smtpUrl, {
+            connectionTimeout: 15000,
+            greetingTimeout: 10000,
+            socketTimeout: 20000
+        });
     } else if (smtpHost) {
         if (!emailUser || !emailPass) {
             console.error('Email disabled: Missing SMTP_USER/SMTP_PASS (or EMAIL_USER/EMAIL_PASS) for custom SMTP host.');
@@ -417,7 +421,10 @@ try {
                 host: smtpHost,
                 port: smtpPort || 587,
                 secure: typeof smtpSecure === 'boolean' ? smtpSecure : false,
-                auth: { user: emailUser, pass: emailPass }
+                auth: { user: emailUser, pass: emailPass },
+                connectionTimeout: 15000,
+                greetingTimeout: 10000,
+                socketTimeout: 20000
             });
         }
     } else if (smtpService || emailUser || emailPass) {
@@ -427,7 +434,10 @@ try {
         } else {
             transporter = nodemailer.createTransport({
                 service: smtpService || 'gmail',
-                auth: { user: emailUser, pass: emailPass }
+                auth: { user: emailUser, pass: emailPass },
+                connectionTimeout: 15000,
+                greetingTimeout: 10000,
+                socketTimeout: 20000
             });
         }
     } else {
@@ -437,6 +447,18 @@ try {
     console.error('Failed to configure email transporter:', e);
     transporter = null;
 }
+
+// Proactively verify SMTP connectivity at startup (non-fatal)
+(async () => {
+    try {
+        if (transporter && typeof transporter.verify === 'function') {
+            await transporter.verify();
+            console.log('SMTP transporter verified successfully.');
+        }
+    } catch (e) {
+        console.warn('SMTP verification failed (emails may still retry/fallback):', e && e.message ? e.message : e);
+    }
+})();
 
 async function sendEmail(to, subject, content) {
     try {
@@ -466,7 +488,38 @@ async function sendEmail(to, subject, content) {
         console.log('Nodemailer response:', info); // Add this line
     } catch (error) {
         console.error(`Error sending email to ${to}:`, error);
+        const code = error && (error.code || error.errno);
+        const shouldFallback = ['ETIMEDOUT', 'ECONNECTION', 'ESOCKET'].includes(String(code)) || String(error && error.message).includes('timed out');
+        if (shouldFallback) {
+            try {
+                await sendEmailViaResend(to, subject, content);
+                console.log('Resend fallback succeeded for', to);
+                return;
+            } catch (fallbackErr) {
+                console.error('Resend fallback failed:', fallbackErr && fallbackErr.response && fallbackErr.response.data ? fallbackErr.response.data : fallbackErr);
+            }
+        }
     }
+}
+
+async function sendEmailViaResend(to, subject, content) {
+    const axios = require('axios');
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+        throw new Error('RESEND_API_KEY is not set');
+    }
+    const htmlContent = /<[a-z][\s\S]*>/i.test(content)
+        ? content
+        : `<p>${String(content).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`;
+    const fromAddress = (process.env.RESEND_FROM || process.env.EMAIL_FROM || process.env.EMAIL_USER || process.env.SMTP_USER || 'no-reply@yourdomain.com');
+    const payload = { from: fromAddress, to: [to], subject, html: htmlContent };
+    await axios.post('https://api.resend.com/emails', payload, {
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        timeout: 15000
+    });
 }
 
 async function sendFailureEmail(registrationId, subject, textContent) {
