@@ -442,10 +442,18 @@ try {
 
 async function sendEmail(to, subject, content) {
     try {
+        // Check if we're on Render (cloud) - use Brevo API
+        if (process.env.NODE_ENV === 'production' && process.env.BREVO_API_KEY) {
+            console.log('Using Brevo API for production environment');
+            await sendEmailViaBrevo(to, subject, content);
+            return;
+        }
+
+        // Local development - use SMTP
         if (!transporter) {
             throw new Error('Email transporter is not configured.');
         }
-        console.log('Attempting to send email to:', to);
+        console.log('Attempting to send email via SMTP to:', to);
         let htmlContent;
 
         // Check if the content already contains HTML tags
@@ -467,10 +475,50 @@ async function sendEmail(to, subject, content) {
             html: htmlContent,
         });
         console.log(`Email sent to ${to}`);
-        console.log('Nodemailer response:', info); // Add this line
+        console.log('Nodemailer response:', info);
     } catch (error) {
         console.error(`Error sending email to ${to}:`, error);
     }
+}
+
+async function sendEmailViaBrevo(to, subject, content) {
+    const axios = require('axios');
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) {
+        throw new Error('BREVO_API_KEY is not set');
+    }
+    
+    const htmlContent = /<[a-z][\s\S]*>/i.test(content)
+        ? content
+        : `<p>${String(content).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`;
+    
+    const fromEmail = process.env.BREVO_FROM_EMAIL || 'abdul.talentconnect@gmail.com';
+    const fromName = process.env.BREVO_FROM_NAME || 'Team TalentConnect';
+    
+    const payload = {
+        sender: {
+            name: fromName,
+            email: fromEmail
+        },
+        to: [
+            {
+                email: to,
+                name: to.split('@')[0] // Use email prefix as name
+            }
+        ],
+        subject: subject,
+        htmlContent: htmlContent
+    };
+    
+    console.log('Sending via Brevo API to:', to);
+    const response = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
+        headers: {
+            'api-key': apiKey,
+            'Content-Type': 'application/json'
+        },
+        timeout: 15000
+    });
+    console.log('Brevo email sent successfully to:', to, 'Message ID:', response.data.messageId);
 }
 
 async function sendFailureEmail(registrationId, subject, textContent) {
