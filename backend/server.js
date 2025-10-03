@@ -425,10 +425,12 @@ try {
         if (!emailUser || !emailPass) {
             console.error('Email disabled: Missing EMAIL_USER/EMAIL_PASS (or SMTP_USER/SMTP_PASS).');
         } else {
+            console.log('Creating Gmail transporter with user:', emailUser);
             transporter = nodemailer.createTransport({
                 service: smtpService || 'gmail',
                 auth: { user: emailUser, pass: emailPass }
             });
+            console.log('Gmail transporter created successfully');
         }
     } else {
         console.warn('Email transporter not configured. Set SMTP_URL or SMTP_HOST with credentials, or EMAIL_USER/EMAIL_PASS for Gmail.');
@@ -443,6 +445,7 @@ async function sendEmail(to, subject, content) {
         if (!transporter) {
             throw new Error('Email transporter is not configured.');
         }
+        console.log('Attempting to send email to:', to);
         let htmlContent;
 
         // Check if the content already contains HTML tags
@@ -456,6 +459,7 @@ async function sendEmail(to, subject, content) {
         }
 
         const fromAddress = (process.env.EMAIL_FROM || process.env.EMAIL_USER || process.env.SMTP_USER || 'no-reply@localhost');
+        console.log('Sending email from:', fromAddress);
         const info = await transporter.sendMail({
 			from: fromAddress,
             to,
