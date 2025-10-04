@@ -7,7 +7,6 @@
     "start": "node backend/server.js",
     "dev": "set PORT=3000&& set HOST=0.0.0.0&& node backend/server.js",
     "prod": "NODE_ENV=production node backend/server.js",
-    "build": "echo 'Build completed - no build step required for Node.js'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
